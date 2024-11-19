@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>設定數值</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .number-picker {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        select {
+            font-size: 24px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 70px;
+            text-align: center;
+            background-color: white;
+        }
+        .title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        .current-value {
+            text-align: center;
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        .confirm-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #00B900;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .confirm-btn:disabled {
+            background-color: #cccccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">請設定開啟條件數值</div>
+        <div class="current-value">目前數值：<span id="currentValue">--</span></div>
+        <div class="number-picker">
+            <select id="hundreds"></select>
+            <select id="tens"></select>
+            <select id="ones"></select>
+        </div>
+        <button id="confirmBtn" class="confirm-btn">確認</button>
+    </div>
+
+    <script>
+        async function initializeLiff() {
+            try {
+                await liff.init({ liffId: "YOUR_LIFF_ID" });
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                }
+                setupNumberPickers();
+                setupEventListeners();
+                loadCurrentValue();
+            } catch (error) {
+                console.error('LIFF initialization failed', error);
+            }
+        }
+
+        function setupNumberPickers() {
+            const hundreds = document.getElementById('hundreds');
+            const tens = document.getElementById('tens');
+            const ones = document.getElementById('ones');
+
+            // 填充選項 0-9
+            for (let i = 0; i <= 9; i++) {
+                hundreds.add(new Option(i, i));
+                tens.add(new Option(i, i));
+                ones.add(new Option(i, i));
+            }
+        }
+
+        function loadCurrentValue() {
+            const params = new URLSearchParams(window.location.search);
+            const currentValue = params.get('current') || '0';
+            document.getElementById('currentValue').textContent = currentValue;
+
+            // 設定預設值
+            const value = currentValue.padStart(3, '0');
+            document.getElementById('hundreds').value = value[0];
+            document.getElementById('tens').value = value[1];
+            document.getElementById('ones').value = value[2];
+        }
+
+        function setupEventListeners() {
+            document.getElementById('confirmBtn').addEventListener('click', async () => {
+                const hundreds = document.getElementById('hundreds').value;
+                const tens = document.getElementById('tens').value;
+                const ones = document.getElementById('ones').value;
+                const newValue = parseInt(hundreds + tens + ones);
+
+                const params = new URLSearchParams(window.location.search);
+                const operator = params.get('operator');
+                const field = params.get('field');
+                const device = params.get('device');
+                const point = params.get('point');
+                const stage = params.get('stage');
+                const sensor = params.get('sensor');
+                const paramIndex = params.get('param_index');
+
+                try {
+                    // 發送 webhook
+                    const response = await fetch('YOUR_WEBHOOK_URL', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            action: 'update_condition',
+                            field: field,
+                            device: device,
+                            point: point,
+                            stage: stage,
+                            sensor: sensor,
+                            paramIndex: paramIndex,
+                            operator: operator,
+                            value: newValue
+                        })
+                    });
+
+                    if (response.ok) {
+                        liff.closeWindow();
+                    } else {
+                        alert('更新失敗，請稍後再試');
+                    }
+                } catch (error) {
+                    console.error('Error updating value:', error);
+                    alert('更新時發生錯誤');
+                }
+            });
+        }
+
+        initializeLiff();
+    </script>
+</body>
+</html>
